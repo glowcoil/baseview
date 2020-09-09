@@ -136,7 +136,10 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn open<H: WindowHandler>(options: WindowOpenOptions) -> WindowHandle {
+    pub fn open<H: WindowHandler, F>(options: WindowOpenOptions, build: F) -> WindowHandle
+    where
+        F: Send + FnOnce(&mut Window) -> H,
+    {
         unsafe {
             let title = (options.title.to_owned() + "\0").as_ptr() as *const i8;
 
@@ -186,7 +189,7 @@ impl Window {
 
             let mut window = Window { hwnd };
 
-            let handler = H::build(&mut window);
+            let handler = build(&mut window);
 
             let window_state = Rc::new(RefCell::new(WindowState {
                 window_class,

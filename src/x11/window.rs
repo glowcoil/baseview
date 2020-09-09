@@ -13,7 +13,10 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn open<H: WindowHandler>(options: WindowOpenOptions) -> WindowHandle {
+    pub fn open<H: WindowHandler, F>(options: WindowOpenOptions, build: F) -> WindowHandle
+    where
+        F: Send + FnOnce(&mut Window) -> H,
+    {
         // Convert the parent to a X11 window ID if we're given one
         let parent = match options.parent {
             Parent::None => None,
@@ -99,7 +102,7 @@ impl Window {
             scaling,
         };
 
-        let mut handler = H::build(&mut window);
+        let mut handler = build(&mut window);
 
         run_event_loop(&mut window, &mut handler);
 

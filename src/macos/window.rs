@@ -18,7 +18,10 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn open<H: WindowHandler>(options: WindowOpenOptions) -> WindowHandle {
+    pub fn open<H: WindowHandler, F>(options: WindowOpenOptions, build: F) -> WindowHandle
+    where
+        F: Send + FnOnce(&mut Window) -> H,
+    {
         unsafe {
             let _pool = NSAutoreleasePool::new(nil);
 
@@ -47,7 +50,7 @@ impl Window {
 
             let mut window = Window { ns_window, ns_view };
 
-            let handler = H::build(&mut window);
+            let handler = build(&mut window);
 
             let current_app = NSRunningApplication::currentApplication(nil);
             current_app.activateWithOptions_(NSApplicationActivateIgnoringOtherApps);

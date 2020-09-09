@@ -8,17 +8,13 @@ fn main() {
         parent: baseview::Parent::None,
     };
 
-    let _handle = Window::open::<MyProgram>(window_open_options);
+    let _handle = Window::open(window_open_options, |_| MyProgram {});
 }
 
 struct MyProgram {}
 
 impl WindowHandler for MyProgram {
     type Message = ();
-
-    fn build(window: &mut Window) -> Self {
-        Self {}
-    }
 
     fn draw(&mut self, window: &mut Window) {}
 
