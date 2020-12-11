@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use rtrb::{RingBuffer, Consumer};
 
-use baseview::{Event, Window, WindowHandler, WindowScalePolicy};
+use baseview::{Application, Event, Window, WindowHandler, WindowScalePolicy};
 
 #[derive(Debug, Clone)]
 enum Message {
@@ -31,7 +31,22 @@ impl WindowHandler for OpenWindowExample {
 
 fn main() {
     let window_open_options = baseview::WindowOpenOptions {
-        title: "baseview".into(),
+        title: "baseview1".into(),
+        size: baseview::Size::new(512.0, 512.0),
+        scale: WindowScalePolicy::SystemScaleFactor,
+    };
+
+    let (mut tx, rx) = RingBuffer::new(128).split();
+
+    let app = Application::new();
+
+    Window::open(
+        window_open_options,
+        |_| OpenWindowExample { rx }
+    );
+
+    let window_open_options = baseview::WindowOpenOptions {
+        title: "baseview2".into(),
         size: baseview::Size::new(512.0, 512.0),
         scale: WindowScalePolicy::SystemScaleFactor,
         parent: baseview::Parent::None,
@@ -39,7 +54,7 @@ fn main() {
 
     let (mut tx, rx) = RingBuffer::new(128).split();
 
-    let opt_app_runner = Window::open(
+    Window::open(
         window_open_options,
         |_| OpenWindowExample { rx }
     );
@@ -54,5 +69,5 @@ fn main() {
         }
     });
 
-    opt_app_runner.unwrap().app_run_blocking();
+    app.run();
 }

@@ -7,7 +7,7 @@ use winapi::um::winuser::{
     GetMessageA, GetWindowLongPtrA, PostMessageA, RegisterClassA, SetTimer,
     SetWindowLongPtrA, TranslateMessage, UnregisterClassA, LoadCursorW,
     CS_OWNDC, GWLP_USERDATA, IDC_ARROW,
-    MSG, WM_CLOSE, WM_CREATE, WM_MOUSEMOVE, WM_SHOWWINDOW, WM_TIMER,
+    MSG, WM_CLOSE, WM_CREATE, WM_MOUSEMOVE, WM_SHOWWINDOW, WM_TIMER, WM_QUIT,
     WNDCLASSA, WS_CAPTION, WS_CHILD, WS_CLIPSIBLINGS, WS_MAXIMIZEBOX, WS_MINIMIZEBOX,
     WS_POPUPWINDOW, WS_SIZEBOX, WS_VISIBLE, WM_DPICHANGED, WM_CHAR, WM_SYSCHAR, WM_KEYDOWN,
     WM_SYSKEYDOWN, WM_KEYUP, WM_SYSKEYUP, WM_INPUTLANGCHANGE,
@@ -16,7 +16,7 @@ use winapi::um::winuser::{
 };
 
 use std::cell::RefCell;
-use std::ffi::c_void;
+use std::ffi::{CString, c_void};
 use std::ptr::null_mut;
 
 use raw_window_handle::{
@@ -65,7 +65,7 @@ unsafe extern "system" fn wnd_proc(
     if !win_ptr.is_null() {
         let window_state = &*(win_ptr as *const RefCell<WindowState>);
         let mut window = Window { hwnd };
-        let mut window = crate::Window(&mut window);
+        let mut window = crate::Window::new(&mut window);
 
         match msg {
             WM_MOUSEMOVE => {
@@ -191,23 +191,26 @@ struct WindowState {
     handler: Box<dyn WindowHandler>,
 }
 
-pub struct Window {
-    hwnd: HWND,
-}
+#[derive(Clone)]
+pub struct Application;
 
-pub struct AppRunner {
-    hwnd: HWND,
-}
+impl Application {
+    pub fn new() -> Application {
+        Application
+    }
 
-impl AppRunner {
-    pub fn app_run_blocking(self) {
+    pub fn run(self) {
         unsafe {
             let mut msg: MSG = std::mem::zeroed();
 
             loop {
-                let status = GetMessageA(&mut msg, self.hwnd, 0, 0);
+                let status = GetMessageA(&mut msg, null_mut(), 0, 0);
 
                 if status == -1 {
+                    break;
+                }
+
+                if msg.message == WM_QUIT {
                     break;
                 }
 
@@ -218,17 +221,21 @@ impl AppRunner {
     }
 }
 
+pub struct Window {
+    hwnd: HWND,
+}
+
 impl Window {
     pub fn open<H, B>(
         options: WindowOpenOptions,
         build: B
-    ) -> Option<crate::AppRunner>
+    )
         where H: WindowHandler + 'static,
               B: FnOnce(&mut crate::Window) -> H,
               B: Send + 'static
     {
         unsafe {
-            let title = (options.title.to_owned() + "\0").as_ptr() as *const i8;
+            let mut title = CString::new(&options.title[..]).unwrap();
 
             let window_class = register_wnd_class();
             // todo: manage error ^
@@ -274,7 +281,7 @@ impl Window {
             let hwnd = CreateWindowExA(
                 0,
                 window_class as _,
-                title,
+                title.as_ptr(),
                 flags,
                 0,
                 0,
@@ -287,7 +294,7 @@ impl Window {
             );
             // todo: manage error ^
 
-            let handler = Box::new(build(&mut crate::Window(&mut Window { hwnd })));
+            let handler = Box::new(build(&mut crate::Window::new(&mut Window { hwnd })));
 
             let window_state = Box::new(RefCell::new(WindowState {
                 window_class,
@@ -298,12 +305,6 @@ impl Window {
 
             SetWindowLongPtrA(hwnd, GWLP_USERDATA, Box::into_raw(window_state) as *const _ as _);
             SetTimer(hwnd, WIN_FRAME_TIMER, 15, None);
-
-            if let crate::Parent::None = options.parent {
-                Some(crate::AppRunner(AppRunner { hwnd }))
-            } else {
-                None
-            }
         }
     }
 }
