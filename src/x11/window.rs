@@ -146,7 +146,7 @@ impl Window {
             window_info.physical_size().height as u16,       // window height
             0,                     // window border
             xcb::WINDOW_CLASS_INPUT_OUTPUT as u16,
-            screen.root_visual(),
+            xcb::COPY_FROM_PARENT as xcb::Visualid,
             &[(
                 xcb::CW_EVENT_MASK,
                 xcb::EVENT_MASK_EXPOSURE
