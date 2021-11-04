@@ -230,12 +230,6 @@ extern "C" fn accepts_first_mouse(
 
 extern "C" fn release(this: &mut Object, _sel: Sel) {
     unsafe {
-        let superclass = msg_send![this, superclass];
-
-        let () = msg_send![super(this, superclass), release];
-    }
-
-    unsafe {
         let retain_count: usize = msg_send![this, retainCount];
 
         let state_ptr: *mut c_void = *this.get_ivar(BASEVIEW_STATE_IVAR);
@@ -262,6 +256,12 @@ extern "C" fn release(this: &mut Object, _sel: Sel) {
             let class = msg_send![this, class];
             ::objc::runtime::objc_disposeClassPair(class);
         }
+    }
+
+    unsafe {
+        let superclass = msg_send![this, superclass];
+
+        let () = msg_send![super(this, superclass), release];
     }
 }
 
